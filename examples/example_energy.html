@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <script src="https://unpkg.com/d3@7"></script>
+    <script src="https://unpkg.com/d3-array@1"></script>
+    <script src="https://unpkg.com/d3-collection@1"></script>
+    <script src="https://unpkg.com/d3-path@1"></script>
+    <script src="https://unpkg.com/d3-shape@1"></script>
+    <!-- <script src="https://unpkg.com/d3-sankey@0"></script> --> <!-- Use the local d3-sankey -->
+    <script src="../dist/d3-sankey.js"></script>
+    <title>Sankey</title>
+  </head>
+  <body>
+    <p>This is an example Sankey diagram. It is closely related to the one on
+    <a href="https://observablehq.com/@d3/sankey-component" target="_blank">Observable</a>,
+    but it works outside of Observable and takes the local Sankey code in use.
+    It is licensed under the ISC License.</p>
+    <div id="chart"></div>
+    <script>
+
+Promise.all([
+  fetch("energy.json").then(res => { if (res.ok) return res.json(); else return []; }),
+]).then(([data]) => {
+
+  // Specify the dimensions of the chart.
+  const width  = 1500;
+  const height = 800;
+
+  let linkColour = "source-target"; // [none (grey), source, target, source-target]
+  let nodeAlign  = "left"; // [left, right, center, justify]
+
+  const preUnit  = "";
+  const postUnit = " TWh";
+  let formatText = function(value, source, target) {
+    const format = d3.format(",.0f");
+    if (target)
+      return `${source} → ${target}\n${preUnit}${format(value)}${postUnit}`;
+    else
+      return `${source}\n${preUnit}${format(value)}${postUnit}`;
+  }
+
+  chart = function() {
+
+    // Convert nodeAlign from a name to a function (since d3-sankey is not part of core d3).
+    if (typeof nodeAlign !== "function") nodeAlign = {
+      left:   d3.sankeyLeft,
+      right:  d3.sankeyRight,
+      center: d3.sankeyCenter
+    }[nodeAlign] ?? d3.sankeyJustify;
+
+    // Create an SVG container.
+    const svg = d3
+      .select("#chart")
+      .append("svg")
+      .attr("width",  width)
+      .attr("height", height)
+      .attr("viewBox", [0, 0, width, height])
+      .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;");
+
+    // Constructs and configures a Sankey generator.
+    const sankey = d3.sankey()
+      .nodeId(d => d.name)
+      .nodeAlign(nodeAlign)
+      .nodeWidth(15)
+      .nodePadding(10)
+      .extent([[1, 5], [width - 1, height - 5]]);
+
+    // Applies it to the data. We make a copy of the nodes and links objects
+    // so as to avoid mutating the original.
+    const {nodes, links} = sankey({
+      nodes: data.nodes.map(d => Object.assign({}, d)),
+      links: data.links.map(d => Object.assign({}, d))
+    });
+
+    // Defines a colour scale.
+    const colour = d3.scaleOrdinal(d3.schemeCategory10);
+
+    // Creates the rects that represent the nodes.
+    const rect = svg
+      .append("g")
+        .attr("stroke", "#000")
+      .selectAll()
+      .data(nodes)
+      .join("rect")
+        .attr("x", d => d.x0)
+        .attr("y", d => d.y0)
+        .attr("height", d => d.y1 - d.y0)
+        .attr("width",  d => d.x1 - d.x0)
+        .attr("fill",   d => colour(d.type));
+
+    // Adds a title on the nodes.
+    rect
+      .append("title")
+      .text(d => formatText(d.value, d.name));
+
+    // Creates the paths that represent the links.
+    const link = svg
+      .append("g")
+        .attr("fill", "none")
+        .attr("stroke-opacity", 0.5)
+      .selectAll()
+      .data(links)
+      .join("g")
+        .style("mix-blend-mode", "multiply");
+
+    // Creates a gradient, if necessary, for the source-target colour option.
+    if (linkColour === "source-target") {
+      const gradient = link
+        .append("linearGradient")
+        .attr("gradientUnits", "userSpaceOnUse")
+        .attr("id", d => d.uid = "link_" + self.crypto.randomUUID())
+        .attr("x1", d => d.source.x1)
+        .attr("x2", d => d.target.x0);
+
+      gradient
+        .append("stop")
+        .attr("offset", "0%")
+        .attr("stop-color", d => colour(d.source.type));
+
+      gradient
+        .append("stop")
+        .attr("offset", "100%")
+        .attr("stop-color", d => colour(d.target.type));
+    }
+
+    link
+      .append("path")
+      .attr("d", d3.sankeyLinkHorizontal())
+      .attr("stroke", linkColour === "source-target" ? d => "url(#" + d.uid + ")"
+          : linkColour === "source" ? d => colour(d.source.type)
+          : linkColour === "target" ? d => colour(d.target.type)
+          : linkColour)
+      .attr("stroke-width", d => Math.max(1, d.width));
+
+    link
+      .append("title")
+      .text(d => formatText(d.value, d.source.name, d.target.name));
+
+    // Adds labels on the nodes.
+    svg
+      .append("g")
+      .selectAll()
+      .data(nodes)
+      .join("text")
+        .attr("x", d => d.x0 < width / 2 ? d.x1 + 6 : d.x0 - 6)
+        .attr("y", d => (d.y1 + d.y0) / 2)
+        .attr("dy", "0.35em")
+        .attr("text-anchor", d => d.x0 < width / 2 ? "start" : "end")
+        .text(d => d.name);
+
+    return svg.node();
+  }
+
+  chart();
+});
+    </script>
+  </body>
+</html>
