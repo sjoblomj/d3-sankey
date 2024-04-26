@@ -16,6 +16,8 @@
     <a href="https://observablehq.com/@d3/sankey-component" target="_blank">Observable</a>,
     but it works outside of Observable and takes the local Sankey code in use.
     It is licensed under the ISC License.</p>
+    <p>The nodes are draggable, thanks to Mario Delgado's
+    <a href="https://observablehq.com/@mariodelgadosr/sankey-diagram-with-draggable-nodes" target="_blank">fork</a>.</p>
     <div id="chart"></div>
     <script>
 
@@ -40,6 +42,8 @@ Promise.all([
       return `${source}\n${preUnit}${format(value)}${postUnit}`;
   }
 
+  const showTotal = false;
+
   chart = function() {
 
     // Convert nodeAlign from a name to a function (since d3-sankey is not part of core d3).
@@ -58,48 +62,82 @@ Promise.all([
       .attr("viewBox", [0, 0, width, height])
       .attr("style", "max-width: 100%; height: auto; font: 10px sans-serif;");
 
-    // Constructs and configures a Sankey generator.
-    const sankey = d3.sankey()
+    // Defining 'sankey' here because update will be used in dragMove: https://github.com/d3/d3-sankey#sankey_update
+    const sankey = d3
+      .sankey()
       .nodeId(d => d.name)
       .nodeAlign(nodeAlign)
       .nodeWidth(15)
       .nodePadding(10)
       .extent([[1, 5], [width - 1, height - 5]]);
 
-    // Applies it to the data. We make a copy of the nodes and links objects
-    // so as to avoid mutating the original.
-    const {nodes, links} = sankey({
-      nodes: data.nodes.map(d => Object.assign({}, d)),
-      links: data.links.map(d => Object.assign({}, d))
-    });
+    // This logic makes a copy of data.nodes and data.links, which will be extended with drag logic
+    let dataNodes = data.nodes.map(d => Object.assign({}, d));
+    let dataLinks = data.links.map(d => Object.assign({}, d));
+
+    let group = sankey({ nodes: dataNodes, links: dataLinks });
+
+    // Prepend a 'Total' Node to chart. To do so, extract total values from group sankey structure for top nodes.
+    // An alternative pattern to determine the 'Total' node's properties from the original 'data' is shown below
+    // at the end of this cell.
+    if (showTotal) {
+      const totalLinks = group.nodes
+        .filter(({ targetLinks }) => targetLinks.length == 0)
+        .map(({ name, value }) => ({ source: "Total", target: name, value }));
+
+      dataNodes = [{ name: "Total", category: "Total" }].concat(dataNodes);
+
+      dataLinks = totalLinks.concat(dataLinks);
+
+      group = sankey({ nodes: dataNodes, links: dataLinks });
+    }
 
     // Defines a colour scale.
     const colour = d3.scaleOrdinal(d3.schemeCategory10);
 
-    // Creates the rects that represent the nodes.
-    const rect = svg
-      .append("g")
-        .attr("stroke", "#000")
-      .selectAll()
-      .data(nodes)
-      .join("rect")
-        .attr("x", d => d.x0)
-        .attr("y", d => d.y0)
-        .attr("height", d => d.y1 - d.y0)
-        .attr("width",  d => d.x1 - d.x0)
-        .attr("fill",   d => colour(d.type));
+    const nodes = group.nodes;
+    const links = group.links;
 
-    // Adds a title on the nodes.
-    rect
+    const nodeWidth = nodes[0].x1 - nodes[0].x0;
+
+    // Container for draggable nodes
+    const node = svg
+      .selectAll("g")
+      .data(nodes)
+      .join("g")
+      .attr("transform", d => `translate(${d.x0}, ${d.y0})`);
+
+    // Relative to container
+    node
+      .append("rect")
+      .attr("height", d => d.y1 - d.y0)
+      .attr("width",  d => d.x1 - d.x0)
+      .attr("fill",   d => colour(d.type))
+      .attr("stroke", "#000")
       .append("title")
       .text(d => formatText(d.value, d.name));
 
-    // Creates the paths that represent the links.
+    // Relative to container / node rect
+    node
+      .append("text")
+      .attr("font-family", "sans-serif")
+      .attr("font-size", 10)
+      .attr("x", d => (d.x0 < width / 2 ? 6 + (d.x1 - d.x0) : -6)) // +/- 6 pixels relative to container
+      .attr("y", d => (d.y1 - d.y0) / 2) // middle of node
+      .attr("dy", "0.35em")
+      .attr("text-anchor", d => (d.x0 < width / 2 ? "start" : "end"))
+      .text(d => d.name);
+
+    // d3V6 events: https://observablehq.com/@d3/d3v6-migration-guide#events
+    node
+      .attr("cursor", "move")
+      .call(d3.drag().on("start", dragStart).on("drag", dragMove));
+
     const link = svg
       .append("g")
         .attr("fill", "none")
         .attr("stroke-opacity", 0.5)
-      .selectAll()
+      .selectAll("g")
       .data(links)
       .join("g")
         .style("mix-blend-mode", "multiply");
@@ -126,28 +164,70 @@ Promise.all([
 
     link
       .append("path")
+      .attr("class", "link")
       .attr("d", d3.sankeyLinkHorizontal())
-      .attr("stroke", linkColour === "source-target" ? d => "url(#" + d.uid + ")"
-          : linkColour === "source" ? d => colour(d.source.type)
-          : linkColour === "target" ? d => colour(d.target.type)
-          : linkColour)
+      .attr("stroke", d =>
+        linkColour === "none"
+          ? "#aaa"
+          : linkColour === "source-target"
+          ? "url(#" + d.uid + ")"
+          : linkColour === "source"
+          ? colour(d.source)
+          : colour(d.target)
+      )
       .attr("stroke-width", d => Math.max(1, d.width));
 
     link
       .append("title")
       .text(d => formatText(d.value, d.source.name, d.target.name));
 
-    // Adds labels on the nodes.
-    svg
-      .append("g")
-      .selectAll()
-      .data(nodes)
-      .join("text")
-        .attr("x", d => d.x0 < width / 2 ? d.x1 + 6 : d.x0 - 6)
-        .attr("y", d => (d.y1 + d.y0) / 2)
-        .attr("dy", "0.35em")
-        .attr("text-anchor", d => d.x0 < width / 2 ? "start" : "end")
-        .text(d => d.name);
+    function dragStart(event, d) {
+      d.__x = event.x;
+      d.__y = event.y;
+      d.__x0 = d.x0;
+      d.__y0 = d.y0;
+      d.__x1 = d.x1;
+      d.__y1 = d.y1;
+    }
+
+    function dragMove(event, d) {
+      d3.select(this).attr("transform", function (d) {
+        const dx = event.x - d.__x;
+        const dy = event.y - d.__y;
+        d.x0 = d.__x0 + dx;
+        d.x1 = d.__x1 + dx;
+        d.y0 = d.__y0 + dy;
+        d.y1 = d.__y1 + dy;
+
+        if (d.x0 < 0) {
+          d.x0 = 0;
+          d.x1 = nodeWidth;
+        }
+
+        if (d.x1 > width) {
+          d.x0 = width - nodeWidth;
+          d.x1 = width;
+        }
+
+        if (d.y0 < 0) {
+          d.y0 = 0;
+          d.y1 = d.__y1 - d.__y0;
+        }
+
+        if (d.y1 > height) {
+          d.y0 = height - (d.__y1 - d.__y0);
+          d.y1 = height;
+        }
+
+        return `translate(${d.x0}, ${d.y0})`;
+      });
+
+      // https://github.com/d3/d3-sankey#sankey_update
+      sankey.update({ nodes, links });
+      link
+        .selectAll(".link")
+        .attr("d", d3.sankeyLinkHorizontal());
+    }
 
     return svg.node();
   }
