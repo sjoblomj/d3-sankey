@@ -1,0 +1,190 @@
+{
+  "nodes": [
+    {
+      "name": "Bank assets",
+      "type": "Assets"
+    },
+    {
+      "name": "New engine",
+      "type": "New expenses"
+    },
+    {
+      "name": "Shipyard costs",
+      "type": "New expenses"
+    },
+    {
+      "name": "Education",
+      "type": "New expenses"
+    },
+    {
+      "name": "Repairs",
+      "type": "New expenses"
+    },
+    {
+      "name": "Sailing fee",
+      "type": "Ship"
+    },
+    {
+      "name": "Ship costs",
+      "type": "Ship"
+    },
+    {
+      "name": "Misc incomes",
+      "type": "Misc"
+    },
+    {
+      "name": "Misc costs",
+      "type": "Misc"
+    },
+    {
+      "name": "Engine",
+      "type": "Misc"
+    },
+    {
+      "name": "Insurance",
+      "type": "Misc misc"
+    },
+    {
+      "name": "Membership fee",
+      "type": "Misc misc"
+    },
+    {
+      "name": "Misc",
+      "type": "Misc misc"
+    },
+    {
+      "name": "Ship",
+      "type": "Ship"
+    },
+    {
+      "name": "New expenses",
+      "type": "New expenses"
+    },
+    {
+      "name": "Incomes for the year",
+      "type": "Result"
+    },
+    {
+      "name": "Result for the year",
+      "type": "Result"
+    },
+    {
+      "name": "Result",
+      "type": "Result"
+    },
+    {
+      "name": "Total",
+      "type": "Result"
+    }
+  ],
+  "links": [
+    {
+      "source": "Bank assets",
+      "target": "Result",
+      "value": 10000,
+      "category": "plus"
+    },
+    {
+      "source": "New engine",
+      "target": "New expenses",
+      "value": 2000,
+      "category": "minus"
+    },
+    {
+      "source": "Shipyard costs",
+      "target": "New expenses",
+      "value": 2500,
+      "category": "minus"
+    },
+    {
+      "source": "Education",
+      "target": "New expenses",
+      "value": 2500,
+      "category": "minus"
+    },
+    {
+      "source": "Repairs",
+      "target": "New expenses",
+      "value": 800,
+      "category": "minus"
+    },
+    {
+      "source": "Sailing fee",
+      "target": "Ship",
+      "value": 2300,
+      "category": "plus"
+    },
+    {
+      "source": "Ship costs",
+      "target": "Ship",
+      "value": 2900,
+      "category": "minus"
+    },
+    {
+      "source": "Misc incomes",
+      "target": "Misc",
+      "value": 450,
+      "category": "plus"
+    },
+    {
+      "source": "Misc costs",
+      "target": "Misc",
+      "value": 600,
+      "category": "minus"
+    },
+    {
+      "source": "Engine",
+      "target": "Misc",
+      "value": 150,
+      "category": "minus"
+    },
+    {
+      "source": "Insurance",
+      "target": "Incomes for the year",
+      "value": 420,
+      "category": "minus"
+    },
+    {
+      "source": "Membership fee",
+      "target": "Incomes for the year",
+      "value": 2820,
+      "category": "plus"
+    },
+    {
+      "source": "Ship",
+      "target": "Incomes for the year",
+      "value": 600,
+      "category": "minus"
+    },
+    {
+      "source": "Misc",
+      "target": "Incomes for the year",
+      "value": 300,
+      "category": "minus"
+    },
+    {
+      "source": "Incomes for the year",
+      "target": "Result for the year",
+      "value": 1500,
+      "category": "plus"
+    },
+    {
+      "source": "New expenses",
+      "target": "Result for the year",
+      "value": 7800,
+      "category": "minus"
+    },
+    {
+      "source": "Result for the year",
+      "target": "Result",
+      "value": 6300,
+      "category": "minus"
+    },
+    {
+      "source": "Result",
+      "target": "Total",
+      "value": 3700,
+      "category": "plus"
+    }
+  ]
+}
